@@ -39,7 +39,7 @@ button
 |  -- main.h
 |  -- button.h
 |  -- encoder.h
-|	 -- led.h
+|  -- led.h
 |- src
 |  -- main.c
 |  -- button.c
@@ -80,64 +80,3 @@ west flash -d ../build
 
 To debug in VS Code, the [Cortex-Debug](https://marketplace.visualstudio.com/items?itemName=marus25.cortex-debug) extension is used to debug the board through the STLink. STLink can be installed through the 
 [STLink Github](https://github.com/stlink-org/stlink/tree/testing) and additional information on how to setup debugging in VS Code for STLink and JLink can be found in [Debugging STM32 in VSCODE with stlink and jlink | VIDEO 45](https://www.youtube.com/watch?v=g2Kf6RbdrIs&t=266s).
-
-## Components
-
-This project uses a mouse encoder to set the pulse width being sent to an external LED. Two external buttons are used to set and reset the encoder's value.
-
-The left and right values of the encoder are mapped to GPIO Port C, Pin 7 and Pin 9 and the external buttons are mapped to GPIO Port E, Pin 1 and Pin 3. The external LED is controlled by PWM and is mapped to a general purpose timer, TIM3. TIM3 is an alternative function mapped to GPIO Port C Pin 6 (see Table 9. Alternate function mapping of the STM32F411xC/STM32F411xE datasheet). The device tree structs are listed below:
-
-```
-	pwmleds {
-		compatible = "pwm-leds";
-		ext_pwm_led1: ext_pwm_led1 {
-			pwms = <&pwm3 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
-		};
-	};
-
-  gpio_keys {
-		compatible = "gpio-keys";
-		ext_button0: ext_button0 {
-			label = "Set Button0";
-			gpios = <&gpioe 1 GPIO_ACTIVE_HIGH>;
-			zephyr,code = <INPUT_KEY_0>;
-		};
-		ext_button1: ext_button1 {
-			label = "Reset Button1";
-			gpios = <&gpioe 3 GPIO_ACTIVE_HIGH>;
-			zephyr,code = <INPUT_KEY_0>;
-		};
-		enc_right: enc_right1 {
-			label = "Encoder Right";
-			gpios = <&gpioc 9 GPIO_ACTIVE_HIGH>;
-			zephyr,code = <INPUT_KEY_0>;
-		};
-		enc_left: enc_left1 {
-			label = "Encoder Left";
-			gpios = <&gpioc 7 GPIO_ACTIVE_HIGH>;
-			zephyr,code = <INPUT_KEY_0>;
-		};
-	};
-
-  aliases {
-		pwm-ext-led1 = &ext_pwm_led1;
-		ext-button0 = &ext_button0;
-		ext-button1 = &ext_button1;
-		enc-right = &enc_right;
-		enc-left = &enc_left;
-	};
-```
-
-Another file that needs to be setup is the prj.conf file. This file is a Kconfig fragment that specifies application specific values for one or more Kconfig options [^2].
-
-```
-CONFIG_STDOUT_CONSOLE=y
-CONFIG_PRINTK=y
-CONFIG_GPIO=y
-CONFIG_LOG=y
-CONFIG_PWM=y
-CONFIG_LOG_PRINTK=y
-CONFIG_LOG_MODE_IMMEDIATE=y
-CONFIG_PWM_LOG_LEVEL_DBG=y
-CONFIG_DEBUG_INFO=y
-```
