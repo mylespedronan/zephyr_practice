@@ -1,64 +1,32 @@
+/**
+ * This module contains code pertaining to the LED controlled by PWM
+ * LED - PC6 (PWM/TIM3_CH1)
+*/
+
 #include "led.h"
 
-#include <stdio.h>
-#include <zephyr/kernel.h>
-#include <zephyr/device.h>
-#include <zephyr/drivers/gpio.h>
-#include <zephyr/drivers/pwm.h>
-
 // The devicetree node identifiers for aliases
-#define LED0_NODE         DT_ALIAS(led0)
-#define EXT_LED1_NODE	    DT_ALIAS(ext_led1)
-
-// PC6 - PWM/TIM3_CH1
 #define EXT_PWM_LED1      DT_ALIAS(pwm_ext_led1)
 #define MIN_PERIOD        PWM_SEC(1U) / 128U
 #define MAX_PERIOD        PWM_SEC(1U)
 
 // LED
 static const struct pwm_dt_spec pwm_led0 = PWM_DT_SPEC_GET(EXT_PWM_LED1);
-static struct gpio_dt_spec led           = GPIO_DT_SPEC_GET(EXT_LED1_NODE, gpios);
 static uint8_t dir;
 
 // Global definitions
-uint32_t max_period = STEPSIZE * 100;
+uint32_t max_period = STEPSIZE;
 uint32_t min_period = MIN_PERIOD;
 
-int initLED(void) 
-{
-  int ret;
-
-  // led = GPIO_DT_SPEC_GET(EXT_LED1_NODE, gpios);
-
-  // Setup LED
-  ret = gpio_is_ready_dt(&led);
-	if (led.port && !ret) {
-		printk("Error %d: LED device %s is not ready; ignoring it\n",
-		       ret, led.port->name);
-		led.port = NULL;
-	}
-
-	if (led.port) {
-		ret = gpio_pin_configure_dt(&led, GPIO_OUTPUT);
-		if (ret != 0) {
-			printk("Error %d: failed to configure LED device %s pin %d\n",
-			       ret, led.port->name, led.pin);
-			led.port = NULL;
-		} else {
-			printk("Set up LED at %s pin %d\n", led.port->name, led.pin);
-		}
-	}
-
-  return ret;
-}
-
+/**
+ * @brief Initialize PWM for the external LED and ensure it is calibrated correctly
+*/
 int initPWM(void)
 {
   dir = 0u;
 
   if (!pwm_is_ready_dt(&pwm_led0)) {
-		printk("Error: PWM device %s is not ready\n",
-		       pwm_led0.dev->name);
+		printk("Error: PWM device %s is not ready\n", pwm_led0.dev->name);
 		return 1;
 	}
 
@@ -74,8 +42,7 @@ int initPWM(void)
 	while (pwm_set_dt(&pwm_led0, max_period, max_period / 2U)) {
 		max_period /= 2U;
 		if (max_period < (4U * MIN_PERIOD)) {
-			printk("Error: PWM device "
-			       "does not support a period at least %lu\n",
+			printk("Error: PWM device does not support a period at least %lu\n",
 			       4U * MIN_PERIOD);
 			return 1;
 		}
@@ -87,6 +54,11 @@ int initPWM(void)
   return 0;
 }
 
+/** 
+ * @brief   Update PWM values based on encoder's value
+ *          https://docs.zephyrproject.org/latest/hardware/peripherals/pwm.html
+ * @param encoder_val		Value from encoder
+*/
 void updatePwmLED(uint32_t encoder_val)
 {
   int ret;

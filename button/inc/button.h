@@ -1,14 +1,14 @@
 #ifndef BUTTON_H
 #define BUTTON_H
 
-// #include "main.h"
+#include <stdio.h>
+#include <stdint.h>
+#include <zephyr/kernel.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/gpio.h>
+
 #include "led.h"
 #include "encoder.h"
-
-#include <stdint.h>
-
-// Like GPIO_DT_SPEC_GET_BY_IDX(), with a fallback to a default value.
-// struct gpio_dt_spec button;
 
 int initButton(void);
 

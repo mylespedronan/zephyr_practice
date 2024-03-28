@@ -7,11 +7,6 @@
 */
 #include "encoder.h"
 
-#include <stdio.h>
-#include <zephyr/kernel.h>
-#include <zephyr/device.h>
-#include <zephyr/drivers/gpio.h>
-
 // The devicetree node identifiers for aliases
 #define ENC_RIGHT         DT_ALIAS(enc_right)
 #define ENC_LEFT          DT_ALIAS(enc_left)
@@ -35,6 +30,10 @@ uint32_t encoder_val = STEPSIZE;
 void encoder_right(const struct device *dev, struct gpio_callback *cb, uint32_t pins);
 void encoder_left(const struct device *dev, struct gpio_callback *cb, uint32_t pins);
 
+/**
+ * @brief     Initialize encoder
+ * @return    Error/Success code
+*/
 int initEncoder(void)
 {
   int ret = 0u;
@@ -100,24 +99,50 @@ int initEncoder(void)
   return ret;
 }
 
+/**
+ * @brief         Callback function for when the encoder moves counter clock-wise.
+ *                This is mainly used for debugging purposes.
+ * @param dev     Device Info
+ * @param cb      GPIO Callback struct
+ * @param pins    GPIO Pins
+*/
 void encoder_right(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
   printk("Encoder moved right: %d\n", encoder_val);
 }
 
+/**
+ * @brief         Callback function for when the encoder moves clock-wise.
+ *                This is mainly used for debugging purposes.
+ * @param dev     Device Info
+ * @param cb      GPIO Callback struct
+ * @param pins    GPIO Pins
+*/
 void encoder_left(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
   printk("Encoder moved left: %d\n", encoder_val);
 }
 
+/**
+ * @brief Updates encoder every 1ms based on the direction (clock/counter-clock wise)
+ *        lastState - holds the previous state of the encoder
+ *        state     - Logic OR of the encoder's pins (enc_a and enc_b)
+ * 
+ *        Signals A and B are generated when they make contact with common ground. Since the
+ *        encoder moves and connects/disconnects these signals from ground as it turns, the
+ *        signals need to know the previous state in order to retain knowledge of the direction
+ *        of the encoder
+ */
 void updateEncoder(void)
 {
   uint8_t enc_a = (uint8_t)gpio_pin_get_dt(&enc_left);
   uint8_t enc_b = (uint8_t)gpio_pin_get_dt(&enc_right) << 1;
   uint8_t state = enc_a | enc_b;
-
+  
+  // Finite State Machine to protect against both encoder pins being active
   if (lastState != state) {
     switch (state) {
+      // NOT Enc_A OR Enc_B
       case 0:
         if (lastState == 2) {
           encoder_val -= (STEPSIZE * 4);
@@ -128,6 +153,7 @@ void updateEncoder(void)
         }
         break;
 
+      // Enc_A
       case 1:
         if (lastState == 0) {
           encoder_val -= (STEPSIZE * 4);
@@ -138,6 +164,7 @@ void updateEncoder(void)
         }
         break;
       
+      // Enc_B
       case 2:
         if (lastState == 3) {
           encoder_val -= (STEPSIZE * 4);
@@ -148,6 +175,7 @@ void updateEncoder(void)
         }
         break;
 
+      // Enc_A AND Enc_B
       case 3:
         if (lastState == 1) {
           encoder_val -= (STEPSIZE * 4);
@@ -162,6 +190,7 @@ void updateEncoder(void)
     }
   }
 
+  // Limit the bounds of the encoder value
   if (encoder_val <= (STEPSIZE + (STEPSIZE * 0.5))) {
     encoder_val = STEPSIZE;
   } else if (encoder_val >= min_period) {
@@ -172,5 +201,6 @@ void updateEncoder(void)
     }
   }
 
+  // Retain last state
   lastState = state;
 }
